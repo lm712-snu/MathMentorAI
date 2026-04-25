@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Stores basic information and preferences for a user.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "instructor"] },
+        "level": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "totalPoints": { "type": "integer" }
+      },
+      "required": ["displayName", "role"]
+    },
+    "course": {
+      "title": "Course",
+      "description": "A container for math topics and students managed by an instructor.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "instructorId": { "type": "string" },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "enrollment": {
+      "title": "Enrollment",
+      "description": "Maps a student's email to a course.",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "active"] }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile/info": {
+      "schema": "userProfile",
+      "description": "Core profile for the user."
+    },
+    "/courses/{courseId}": {
+      "schema": "course",
+      "description": "Course details."
+    },
+    "/courses/{courseId}/materials/{materialId}": {
+      "schema": "object",
+      "description": "Lesson materials for a specific course."
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": "enrollment",
+      "description": "Table of allowed student emails."
+    }
+  }
+}

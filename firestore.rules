@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Path Variable Hardening & Global Helpers
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)/profile/info).data;
+    }
+    function isInstructor() {
+      return isSignedIn() && getUserData(request.auth.uid).role == 'instructor';
+    }
+
+    // 2. Validation Blueprints
+    function isValidUserProfile(data) {
+      return data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             data.role in ['student', 'instructor'] &&
+             (data.get('totalPoints', 0) is int);
+    }
+
+    // Collection: Users
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      
+      match /profile/info {
+        allow read: if isOwner(userId) || isInstructor();
+        allow create: if isOwner(userId) && isValidUserProfile(incoming());
+        allow update: if isOwner(userId) && isValidUserProfile(incoming());
+        allow delete: if isOwner(userId);
+      }
+      
+      match /assessments/{assessmentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update, delete: if false;
+      }
+      
+      match /memory/current {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // Collection: Courses
+    match /courses/{courseId} {
+      allow read: if isSignedIn(); // Basic read for now, can be narrowed
+      allow create: if isInstructor();
+      allow update, delete: if isInstructor() && existing().instructorId == request.auth.uid;
+      
+      match /materials/{materialId} {
+        allow read: if isSignedIn();
+        allow write: if isInstructor() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid;
+      }
+    }
+
+    // Collection: Enrollments
+    match /enrollments/{enrollmentId} {
+      function isCourseOwner() {
+        return get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId == request.auth.uid;
+      }
+      allow read: if isSignedIn() && (isInstructor() || resource.data.studentEmail == request.auth.token.email);
+      allow create: if isInstructor();
+      allow update: if isInstructor() && isCourseOwner();
+      allow delete: if isInstructor() && isCourseOwner();
+
+      match /notes/{noteId} {
+        allow read, write: if isInstructor() && isCourseOwner();
+      }
+    }
+  }
+}

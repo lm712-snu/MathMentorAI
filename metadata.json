@@ -1,0 +1,10 @@
+{
+  "name": "MathMentor AI",
+  "description": "An agentic AI-powered mathematics LMS that provides personalized tutoring, dynamic question generation, and adaptive learning paths.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "AI-powered tutoring",
+    "Dynamic assessment",
+    "Progress tracking"
+  ]
+}
